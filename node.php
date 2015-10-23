@@ -2,89 +2,92 @@
 class Node {
 
 	private $root;
-	
-	public function __construct($node) {
-		$this->root = $node;
-	}
 
-	public function findCore() {
-		$core_node = $this->root->find('.info_module', 0);
-		$core_node = $this->root->find('.art_abstract', 0);
+    private $filter_tags = array('i' => 1, 'css' => 1, 'script' => 1, 'comment' => 1,);
+	
+	public function __construct($node) {/*{{{*/
+		$this->root = $node;
+	}/*}}}*/
+
+	public function findCore() {/*{{{*/
+		$core_node = $this->root->find('div .content', 0);
 		$core_node = $this->root->find('section', 0);
 		return $this->node2arr($core_node);
-	}
+	}/*}}}*/
 
-	protected function node2arr($node) {
+	protected function node2arr($node) {/*{{{*/
 		$tags = array();
 		if (!$node) {
 			return $tags;
 		}
+        if (isset($this->filter_tags[$node->tag])) {
+            return $tags;
+        }
+        if ($this->isHidden($node)) {
+            return $tags;
+        }
 		if (!$node->has_child()) {
-			$tags[] = $this->node2tag($node);
+            if ($tag = $this->node2tag($node)) {
+                $tags[] = $tag;
+            }
 			return $tags;
 		}
 
-		//var_dump($node->nodes);exit;
 		foreach($node->nodes as $child) {
-			//echo $child->tag.'bbb'.$child->innertext."ccc\n";continue;
-			if ($child->has_child()) {
-				$tags = array_merge($tags, $this->node2arr($child));
-				if ($tag = $this->node2tag($child, true)) {
-					$tags[] = $tag;
-				}
-				continue;
-			}
-			if ($tag = $this->node2tag($child)) {
-				$tags[] = $tag;
-			}
+            $tags = array_merge($tags, $this->node2arr($child));
 		}
-//exit;
 		return $tags;
-	}
+	}/*}}}*/
 
-	protected function node2tag($node, $has_child = false) {
-		switch($node->tag) {
-			case 'comment':
-			case 'script':
-			case 'css':
-				return false;
-			case 'img':
-				$src = trim($node->getAttribute('src'));
-				$attrs = $node->getAllAttributes();
-				foreach($attrs as $attr) {
-					if ($attr == $src) {
-						continue;
-					}
-					if (preg_match('/http:\/\/[^?]+(.jpg|.jpeg|.png|.icon)(\?.*|$)/i', $attr)) {
-						$src = $attr;
-					}
-				}
-				if ($src !== '') {
-					return array(
-						'type' => 'img',
-						'content' => $src,
-					);
-				}
-			default:
-				if ($has_child) {
-					$plaintext = trim($node->plaintext);
-					if ($plaintext !== '') {
-						return array(
-							'type' => 'text',
-							'content' => $plaintext,
-						);
-					}
-				} else {
-					$innertext = trim($node->innertext);
-					if ($innertext !== '') {
-						return array(
-							'type' => 'text',
-							'content' => $innertext,
-						);
-					}
-				}
+	protected function node2tag($node) {/*{{{*/
+        if ($node->tag === 'img') {
+            return $this->getImgTag($node);
+        } else {
+            return $this->getTextTag($node);
 		}
-		return false;
-	}
+	}/*}}}*/
+
+    protected function isHidden($node) {/*{{{*/
+        if ($style = $node->getAttribute('style')) {
+            if (preg_match('/display:\s*none/', $style)) {
+                return true;
+            }
+        }
+        if ($class = $node->getAttribute('class')) {
+            if (preg_match('/(hide)/', $class)) {
+                return true;
+            }
+        }
+        return false;
+    }/*}}}*/
+
+    protected function getImgTag($node) {/*{{{*/
+        $src = trim($node->getAttribute('src'));
+        $attrs = $node->getAllAttributes();
+        foreach($attrs as $attr) {
+            if ($attr == $src) {
+                continue;
+            }
+            if (preg_match('/http[s]?:\/\/[^?]+(.jpg|.jpeg|.png|.icon)(\?.*|$)/i', $attr)) {
+                $src = $attr;
+            }
+        }
+        if ($src !== '') {
+            return new Tag(Tag::TAG_TYPE_IMG, $src);
+        }
+        return false;
+    }/*}}}*/
+
+    protected function getTextTag($node) {/*{{{*/
+        $text = trim($node->innertext);
+        if ($this->isTextValid($text)) {
+            return new Tag(Tag::TAG_TYPE_TEXT, $text);
+        }
+        return false;
+    }/*}}}*/
+
+    protected function isTextValid($text) {/*{{{*/
+        return ($text === '' || $text === '0') ? false : true;
+    }/*}}}*/
 
 }
