@@ -12,6 +12,7 @@ class Node {
 	public function findCore() {/*{{{*/
 		$core_node = $this->root->find('div .content', 0);
 		$core_node = $this->root->find('section', 0);
+		$core_node = $this->root->find('article', 0);
 		return $this->node2arr($core_node);
 	}/*}}}*/
 

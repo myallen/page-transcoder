@@ -8,7 +8,17 @@ class Parser {
     }/*}}}*/
 
 	public function doMagic() {/*{{{*/
-		$html = Common::fetchHtml($this->source);
+        //header
+        $opts = array(
+                'http'=>array(
+                    'method'=>"GET",
+                    'header'=>"Accept-language: zh-CN\r\nUser-Agent:Mozilla/5.0 (Linux; U; Android 4.3; en-us; SM-N900T Build/JSS15J) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30\r\n"
+                    ),
+                );
+
+        $context = stream_context_create($opts);
+
+        $html = Common::fetchHtml($this->source, $context);
 
 		include('./lib/simple_html_dom.php');
 		$dom = new simple_html_dom();
